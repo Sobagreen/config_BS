@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Config_BS</title>
   <style>
     :root {
@@ -11,10 +11,9 @@
     body {
       margin: 0;
       padding: 12px;
+      width: 800px;
+      max-height: 650px;
       box-sizing: border-box;
-      min-width: 420px;
-      max-width: 900px;
-      max-height: 800px;
       background: #f5f5f7;
     }
 
@@ -88,10 +87,9 @@
       white-space: pre-line;
     }
 
-    /* Вместо внутреннего скролла — пусть окно растёт до лимита браузера */
     #resultsScroll {
-      max-height: none;
-      overflow: visible;
+      max-height: 430px;
+      overflow-y: auto;
       padding-right: 4px;
     }
 
@@ -141,12 +139,6 @@
       font-family: monospace;
       font-weight: 600;
     }
-
-    /* Скрываем первый столбец с индексом для всех таблиц */
-    th.col-idx,
-    td.col-idx {
-      display: none;
-    }
   </style>
 </head>
 <body>
@@ -154,8 +146,8 @@
     <h1>Config_BS</h1>
     <div class="subtitle">
       Введите код в формате <b>XXYYYY</b>.<br>
-      <b>Enter</b> — открыть IP (sites.csv).<br>
-      <b>Ctrl + Enter</b> — Build: LNCEL, 2G, 4G ANT.
+      <b>IP</b> — открыть IP из <i>sites.csv</i>.<br>
+      <b>Build</b> — показать LNCEL (LNCEL_KR_RO.csv), 2G (Config_2G.csv) и 4G ANT (4G_ANT.csv).
     </div>
 
     <div class="form-row">
@@ -169,17 +161,17 @@
 
     <div id="resultsScroll">
       <div class="results-section">
-        <div class="results-section-title">LNCEL (LNCEL_KR_RO.csv)</div>
+        <div class="results-section-title">4G</div>
         <div id="lncelContainer"></div>
       </div>
 
       <div class="results-section">
-        <div class="results-section-title">2G (Config_2G.csv)</div>
+        <div class="results-section-title">2G</div>
         <div id="config2gContainer"></div>
       </div>
 
       <div class="results-section">
-        <div class="results-section-title">4G ANT (4G_ANT.csv + OPT_Speed.csv)</div>
+        <div class="results-section-title">ANT_RMOD</div>
         <div id="ant4gContainer"></div>
       </div>
     </div>
@@ -188,4 +180,3 @@
   <script src="popup.js"></script>
 </body>
 </html>
-
