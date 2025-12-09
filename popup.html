@@ -11,9 +11,10 @@
     body {
       margin: 0;
       padding: 12px;
-      width: 800px;
-      max-height: 650px;
       box-sizing: border-box;
+      min-width: 420px;
+      max-width: 900px;
+      max-height: 800px;
       background: #f5f5f7;
     }
 
@@ -87,9 +88,10 @@
       white-space: pre-line;
     }
 
+    /* Окно растёт по содержимому, без внутреннего скролла */
     #resultsScroll {
-      max-height: 430px;
-      overflow-y: auto;
+      max-height: none;
+      overflow-y: visible;
       padding-right: 4px;
     }
 
@@ -139,6 +141,12 @@
       font-family: monospace;
       font-weight: 600;
     }
+
+    /* Скрываем первый столбец (П\Н) для всех таблиц */
+    th.col-idx,
+    td.col-idx {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -147,7 +155,8 @@
     <div class="subtitle">
       Введите код в формате <b>XXYYYY</b>.<br>
       <b>IP</b> — открыть IP из <i>sites.csv</i>.<br>
-      <b>Build</b> — показать LNCEL (LNCEL_KR_RO.csv), 2G (Config_2G.csv) и 4G ANT (4G_ANT.csv).
+      <b>Build</b> — показать 4G (LNCEL_KR_RO.csv), 2G (Config_2G.csv) и ANT_RMOD (4G_ANT.csv + OPT_Speed.csv).<br>
+      <b>Enter</b> — IP, <b>Ctrl+Enter</b> — Build.
     </div>
 
     <div class="form-row">
