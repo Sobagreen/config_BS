@@ -6,6 +6,13 @@ let config2gMap = new Map();      // Config_2G.csv: код -> массив ст�
 let ant4gMap = new Map();         // 4G_ANT.csv: X-ключ -> массив строк {A,C,D,E}
 let optSpeedMap = new Map();      // OPT_Speed.csv: ключ (Z) -> массив строк {M,H}
 
+// Индекс колонки admin_state в таблице 2G (по массиву cells ниже)
+// cfg2gHeaders = [ 'П\Н', 'BS_NAME', 'LAC', 'RAC', 'Sector_NAME', 'NCC', 'BCC', 'BCCH', 'admin_state', 'TRX_POWER', 'TRX.TRX.trxRfPower', 'TrxRfPower' ]
+// cells = [idx+1, code, E, G, H, I, J, K, L, O, P, N]
+//           0     1    2  3  4  5  6  7  8  9 10 11
+// => admin_state = cells[8]
+const ADMIN_STATE_CELL_INDEX_2G = 8;
+
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('codeInput');
   const ipBtn = document.getElementById('ipBtn');
@@ -177,7 +184,7 @@ function normalizeIp(ipRaw) {
   return ip.trim();
 }
 
-/* ================== LNCEL TABLE ================== */
+/* ================== LNCEL TABLE (4G) ================== */
 
 function renderLncelResults(code) {
   const container = document.getElementById('lncelContainer');
@@ -197,7 +204,7 @@ function renderLncelResults(code) {
   const headRow = document.createElement('tr');
 
   const lncelHeaders = [
-    'П\Н',
+    'П\\Н',
     'BS_NAME',
     'LNCEL_NAME',
     'TAC',
@@ -207,9 +214,10 @@ function renderLncelResults(code) {
     'CID'
   ];
 
-  lncelHeaders.forEach(h => {
+  lncelHeaders.forEach((h, i) => {
     const th = document.createElement('th');
     th.textContent = h;
+    if (i === 0) th.classList.add('col-idx'); // скрываем первый столбец визуально
     headRow.appendChild(th);
   });
 
@@ -232,9 +240,10 @@ function renderLncelResults(code) {
       row.J
     ];
 
-    cells.forEach(v => {
+    cells.forEach((v, i) => {
       const td = document.createElement('td');
       td.textContent = v || '';
+      if (i === 0) td.classList.add('col-idx'); // спрятать П\Н
       tr.appendChild(td);
     });
 
@@ -265,7 +274,7 @@ function renderConfig2gResults(code) {
   const headRow = document.createElement('tr');
 
   const cfg2gHeaders = [
-    'П\Н',
+    'П\\Н',
     'BS_NAME',
     'LAC',
     'RAC',
@@ -279,9 +288,10 @@ function renderConfig2gResults(code) {
     'TrxRfPower'
   ];
 
-  cfg2gHeaders.forEach(h => {
+  cfg2gHeaders.forEach((h, i) => {
     const th = document.createElement('th');
     th.textContent = h;
+    if (i === 0) th.classList.add('col-idx'); // скрываем П\Н
     headRow.appendChild(th);
   });
 
@@ -299,9 +309,29 @@ function renderConfig2gResults(code) {
       row.J, row.K, row.L,
       row.O, row.P, row.N
     ];
-    cells.forEach(v => {
+    cells.forEach((v, i) => {
       const td = document.createElement('td');
       td.textContent = v || '';
+
+      // скрываем индекс
+      if (i === 0) {
+        td.classList.add('col-idx');
+      }
+
+      // подсветка admin_state (значение 1 — зелёный, 0 — красный)
+      if (i === ADMIN_STATE_CELL_INDEX_2G) {
+        const val = String(v || '').trim();
+        if (val === '1') {
+          td.style.backgroundColor = '#bbf7d0'; // зелёный фон
+          td.style.color = '#166534';          // тёмно-зелёный текст
+          td.style.fontWeight = '600';
+        } else if (val === '0') {
+          td.style.backgroundColor = '#fecaca'; // красный фон
+          td.style.color = '#991b1b';           // тёмно-красный текст
+          td.style.fontWeight = '600';
+        }
+      }
+
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -326,7 +356,7 @@ function toAntKeyFromX(xVal) {
   return prefix + suffix2;
 }
 
-/* ================== 4G ANT + OPT_Speed TABLE ================== */
+/* ================== 4G ANT + OPT_Speed TABLE (ANT_RMOD) ================== */
 
 function renderAnt4gResults(code) {
   const container = document.getElementById('ant4gContainer');
@@ -358,7 +388,7 @@ function renderAnt4gResults(code) {
   const headRow = document.createElement('tr');
 
   const ant4gHeaders = [
-    'П\Н',
+    'П\\Н',
     'Sector_NAME',
     'ANT',
     'RMOD_№',
@@ -367,9 +397,10 @@ function renderAnt4gResults(code) {
     'Длина'
   ];
 
-  ant4gHeaders.forEach(h => {
+  ant4gHeaders.forEach((h, i) => {
     const th = document.createElement('th');
     th.textContent = h;
+    if (i === 0) th.classList.add('col-idx'); // скрываем П\Н
     headRow.appendChild(th);
   });
 
@@ -385,9 +416,10 @@ function renderAnt4gResults(code) {
 
     if (rows.length === 0) {
       const cells = [idx + 1, xVal, '-', '-', '-', '-', '-'];
-      cells.forEach(v => {
+      cells.forEach((v, i) => {
         const td = document.createElement('td');
         td.textContent = v;
+        if (i === 0) td.classList.add('col-idx');
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -424,9 +456,10 @@ function renderAnt4gResults(code) {
       len
     ];
 
-    cells.forEach(v => {
+    cells.forEach((v, i) => {
       const td = document.createElement('td');
       td.textContent = v || '';
+      if (i === 0) td.classList.add('col-idx');
       tr.appendChild(td);
     });
 
