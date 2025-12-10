@@ -7,7 +7,7 @@ let rdbMap = new Map();           // RDB.csv: BS_NAME -> массив строк
 
 let sitesLoaded = false;
 let buildDataLoaded = false;
-let buildDataLoading = false;
+let buildDataError = false;
 
 // Индекс колонки admin_state в таблице 2G (по массиву cells ниже)
 // cfg2gHeaders = [ 'П\Н', 'BS_NAME', 'LAC', 'RAC', 'Sector_NAME', 'NCC', 'BCC', 'BCCH', 'admin_state', 'TRX_POWER', 'TRX.TRX.trxRfPower', 'TrxRfPower' ]
@@ -28,15 +28,26 @@ document.addEventListener('DOMContentLoaded', () => {
     input.select();
   }
 
-  // Предзагружаем только sites.csv (IP)
+  // 1) Сначала грузим только sites.csv (IP)
   loadSitesCsv()
     .then(() => {
       sitesLoaded = true;
-      status.textContent = 'Данные для IP загружены. Введите код.';
+      status.textContent = 'Таблица IP загружена. Введите код.';
     })
     .catch(err => {
       console.error('Ошибка загрузки sites.csv:', err);
       status.textContent = 'Ошибка загрузки таблицы IP (sites.csv).';
+    });
+
+  // 2) Параллельно (фоном) стартуем загрузку всех остальных CSV
+  loadBuildCsv()
+    .then(() => {
+      buildDataLoaded = true;
+      console.log('Данные для BUILD загружены.');
+    })
+    .catch(err => {
+      buildDataError = true;
+      console.error('Ошибка загрузки данных для BUILD:', err);
     });
 
   ipBtn.addEventListener('click', () => {
@@ -54,10 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.ctrlKey) {
-        // CTRL+Enter = Build
         handleSearch({ openIp: false, showBuild: true });
       } else {
-        // Просто Enter = IP
         handleSearch({ openIp: true, showBuild: false });
       }
     }
@@ -102,26 +111,15 @@ async function handleSearch({ openIp, showBuild }) {
 
   // --- Build: RDB + LNCEL + 2G + 4G_ANT + OPT_Speed ---
   if (showBuild) {
-    // лениво подгружаем остальные CSV при первом Build
+    if (buildDataError) {
+      status.textContent = (status.textContent ? status.textContent + '\n' : '') +
+        'Ошибка загрузки данных для BUILD (см. консоль).';
+      return;
+    }
     if (!buildDataLoaded) {
-      if (buildDataLoading) {
-        status.textContent = 'Данные для BUILD уже загружаются…';
-        return;
-      }
-      buildDataLoading = true;
-      status.textContent = 'Загружаем данные для BUILD…';
-
-      try {
-        await loadBuildCsv();
-        buildDataLoaded = true;
-      } catch (err) {
-        console.error('Ошибка загрузки данных для BUILD:', err);
-        status.textContent = 'Ошибка загрузки данных для BUILD. См. консоль.';
-        buildDataLoading = false;
-        return;
-      }
-      buildDataLoading = false;
-      status.textContent = 'Данные для BUILD загружены.';
+      status.textContent = (status.textContent ? status.textContent + '\n' : '') +
+        'Данные для BUILD ещё загружаются, попробуйте через пару секунд.';
+      return;
     }
 
     if (url) {
@@ -604,11 +602,17 @@ async function loadOptSpeedCsv() {
   parseOptSpeedCsv(text);
 }
 
+// ВАЖНО: RDB в русской кодировке (скорее всего Windows-1251)
 async function loadRdbCsv() {
   const url = chrome.runtime.getURL('RDB.csv');
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('Не удалось загрузить RDB.csv');
-  const text = await resp.text();
+
+  // Берём как бинарный буфер и декодируем windows-1251
+  const buf = await resp.arrayBuffer();
+  const decoder = new TextDecoder('windows-1251');
+  const text = decoder.decode(buf);
+
   parseRdbCsv(text);
 }
 
