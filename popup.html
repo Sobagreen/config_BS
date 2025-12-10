@@ -155,7 +155,7 @@
     <div class="subtitle">
       Введите код в формате <b>XXYYYY</b>.<br>
       <b>IP</b> — открыть IP из <i>sites.csv</i>.<br>
-      <b>Build</b> — показать 4G (LNCEL_KR_RO.csv), 2G (Config_2G.csv) и ANT_RMOD (4G_ANT.csv + OPT_Speed.csv).<br>
+      <b>Build</b> — RDB + 4G (LNCEL_KR_RO.csv), 2G (Config_2G.csv), ANT_RMOD (4G_ANT.csv + OPT_Speed.csv).<br>
       <b>Enter</b> — IP, <b>Ctrl+Enter</b> — Build.
     </div>
 
@@ -171,6 +171,8 @@
     <div id="resultsScroll">
       <div class="results-section">
         <div class="results-section-title">4G</div>
+        <!-- RDB над 4G -->
+        <div id="rdbContainer"></div>
         <div id="lncelContainer"></div>
       </div>
 
