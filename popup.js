@@ -1,10 +1,13 @@
-let dataLoaded = false;
-
 let codeToIpMap = new Map();      // sites.csv: код -> IP
 let lncelMap = new Map();         // LNCEL_KR_RO.csv: код -> массив строк
 let config2gMap = new Map();      // Config_2G.csv: код -> массив строк
 let ant4gMap = new Map();         // 4G_ANT.csv: X-ключ -> массив строк {A,C,D,E}
 let optSpeedMap = new Map();      // OPT_Speed.csv: ключ (Z) -> массив строк {M,H}
+let rdbMap = new Map();           // RDB.csv: BS_NAME -> массив строк {N,O,P,R}
+
+let sitesLoaded = false;
+let buildDataLoaded = false;
+let buildDataLoading = false;
 
 // Индекс колонки admin_state в таблице 2G (по массиву cells ниже)
 // cfg2gHeaders = [ 'П\Н', 'BS_NAME', 'LAC', 'RAC', 'Sector_NAME', 'NCC', 'BCC', 'BCCH', 'admin_state', 'TRX_POWER', 'TRX.TRX.trxRfPower', 'TrxRfPower' ]
@@ -25,15 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     input.select();
   }
 
-  // Загружаем все CSV
-  loadCsv()
+  // Предзагружаем только sites.csv (IP)
+  loadSitesCsv()
     .then(() => {
-      dataLoaded = true;
-      status.textContent = 'Данные загружены. Введите код.';
+      sitesLoaded = true;
+      status.textContent = 'Данные для IP загружены. Введите код.';
     })
     .catch(err => {
-      console.error('Ошибка загрузки CSV:', err);
-      status.textContent = 'Ошибка загрузки данных. Проверьте CSV-файлы.';
+      console.error('Ошибка загрузки sites.csv:', err);
+      status.textContent = 'Ошибка загрузки таблицы IP (sites.csv).';
     });
 
   ipBtn.addEventListener('click', () => {
@@ -59,73 +62,100 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+});
 
-  function handleSearch({ openIp, showBuild }) {
-    const rawCode = input.value.trim();
-    const code = rawCode.toUpperCase();
-    status.textContent = '';
-    clearResults();
+async function handleSearch({ openIp, showBuild }) {
+  const input = document.getElementById('codeInput');
+  const status = document.getElementById('status');
 
-    if (!dataLoaded) {
-      status.textContent = 'Подождите, данные ещё загружаются…';
-      return;
-    }
+  const rawCode = input.value.trim();
+  const code = rawCode.toUpperCase();
+  status.textContent = '';
+  clearResults();
 
-    const re = /^[A-Z]{2}\d{4}$/;
-    if (!re.test(code)) {
-      status.textContent = 'Неверный формат. Нужно XXYYYY (2 буквы + 4 цифры).';
-      return;
-    }
+  if (!sitesLoaded) {
+    status.textContent = 'Подождите, идёт загрузка таблицы IP (sites.csv)…';
+    return;
+  }
 
-    // --- IP из sites.csv ---
-    const ipRaw = codeToIpMap.get(code);
-    let ip = null;
-    let url = null;
+  const re = /^[A-Z]{2}\d{4}$/;
+  if (!re.test(code)) {
+    status.textContent = 'Неверный формат. Нужно XXYYYY (2 буквы + 4 цифры).';
+    return;
+  }
 
-    if (ipRaw) {
-      ip = normalizeIp(ipRaw);
-      if (ip) {
-        url = /^https?:\/\//i.test(ip) ? ip : 'http://' + ip;
-      } else {
-        status.textContent = 'IP найден, но некорректен.';
-      }
+  // --- IP из sites.csv ---
+  const ipRaw = codeToIpMap.get(code);
+  let ip = null;
+  let url = null;
+
+  if (ipRaw) {
+    ip = normalizeIp(ipRaw);
+    if (ip) {
+      url = /^https?:\/\//i.test(ip) ? ip : 'http://' + ip;
     } else {
-      status.textContent = 'Совпадение по IP не найдено в sites.csv.';
+      status.textContent = 'IP найден, но некорректен.';
     }
+  } else {
+    status.textContent = 'Совпадение по IP не найдено в sites.csv.';
+  }
 
-    // --- Build: LNCEL + 2G + 4G_ANT + OPT_Speed ---
-    if (showBuild) {
-      if (url) {
-        status.textContent = (status.textContent ? status.textContent + '\n' : '') +
-          'IP: ' + ip + '\nURL: ' + url;
-      }
-      renderLncelResults(code);
-      renderConfig2gResults(code);
-      renderAnt4gResults(code);
-    }
-
-    // --- Открыть IP ---
-    if (openIp) {
-      if (!url) {
-        status.textContent = (status.textContent ? status.textContent + '\n' : '') +
-          'Не удалось открыть IP: URL не сформирован.';
+  // --- Build: RDB + LNCEL + 2G + 4G_ANT + OPT_Speed ---
+  if (showBuild) {
+    // лениво подгружаем остальные CSV при первом Build
+    if (!buildDataLoaded) {
+      if (buildDataLoading) {
+        status.textContent = 'Данные для BUILD уже загружаются…';
         return;
       }
-      status.textContent = 'Открываю: ' + url;
-      chrome.tabs.create({ url: url }, () => {
-        if (chrome.runtime.lastError) {
-          console.error('Ошибка при открытии URL:', chrome.runtime.lastError);
-          status.textContent = 'Ошибка при открытии URL. См. консоль.';
-        }
-      });
+      buildDataLoading = true;
+      status.textContent = 'Загружаем данные для BUILD…';
+
+      try {
+        await loadBuildCsv();
+        buildDataLoaded = true;
+      } catch (err) {
+        console.error('Ошибка загрузки данных для BUILD:', err);
+        status.textContent = 'Ошибка загрузки данных для BUILD. См. консоль.';
+        buildDataLoading = false;
+        return;
+      }
+      buildDataLoading = false;
+      status.textContent = 'Данные для BUILD загружены.';
     }
+
+    if (url) {
+      status.textContent = (status.textContent ? status.textContent + '\n' : '') +
+        'IP: ' + ip + '\nURL: ' + url;
+    }
+
+    renderRdbResults(code);
+    renderLncelResults(code);
+    renderConfig2gResults(code);
+    renderAnt4gResults(code);
   }
-});
+
+  // --- Открыть IP ---
+  if (openIp) {
+    if (!url) {
+      status.textContent = (status.textContent ? status.textContent + '\n' : '') +
+        'Не удалось открыть IP: URL не сформирован.';
+      return;
+    }
+    status.textContent = 'Открываю: ' + url;
+    chrome.tabs.create({ url: url }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Ошибка при открытии URL:', chrome.runtime.lastError);
+        status.textContent = 'Ошибка при открытии URL. См. консоль.';
+      }
+    });
+  }
+}
 
 /* ================== Общие утилиты ================== */
 
 function clearResults() {
-  ['lncelContainer', 'config2gContainer', 'ant4gContainer'].forEach(id => {
+  ['rdbContainer', 'lncelContainer', 'config2gContainer', 'ant4gContainer'].forEach(id => {
     const c = document.getElementById(id);
     if (c) c.innerHTML = '';
   });
@@ -182,6 +212,58 @@ function normalizeIp(ipRaw) {
   ip = ip.replace(/[;,]+$/g, '');
 
   return ip.trim();
+}
+
+/* ================== RDB TABLE ================== */
+
+function renderRdbResults(code) {
+  const container = document.getElementById('rdbContainer');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  const rows = rdbMap.get(code) || [];
+
+  if (rows.length === 0) {
+    container.textContent = 'Нет данных в RDB.';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+
+  const headers = [
+    'Адрес',  // N
+    'P_O',    // O
+    'P',      // P
+    'Vendor'  // R
+  ];
+
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    headRow.appendChild(th);
+  });
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    const cells = [r.N, r.O, r.P, r.R];
+    cells.forEach(v => {
+      const td = document.createElement('td');
+      td.textContent = v || '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  container.appendChild(table);
 }
 
 /* ================== LNCEL TABLE (4G) ================== */
@@ -472,22 +554,22 @@ function renderAnt4gResults(code) {
 
 /* ================== ЗАГРУЗКА CSV ================== */
 
-async function loadCsv() {
-  await Promise.all([
-    loadSitesCsv(),
-    loadLncelCsv(),
-    loadConfig2gCsv(),
-    loadAnt4gCsv(),
-    loadOptSpeedCsv()
-  ]);
-}
-
 async function loadSitesCsv() {
   const url = chrome.runtime.getURL('sites.csv');
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('Не удалось загрузить sites.csv');
   const text = await resp.text();
   parseSitesCsv(text);
+}
+
+async function loadBuildCsv() {
+  await Promise.all([
+    loadLncelCsv(),
+    loadConfig2gCsv(),
+    loadAnt4gCsv(),
+    loadOptSpeedCsv(),
+    loadRdbCsv()
+  ]);
 }
 
 async function loadLncelCsv() {
@@ -520,6 +602,14 @@ async function loadOptSpeedCsv() {
   if (!resp.ok) throw new Error('Не удалось загрузить OPT_Speed.csv');
   const text = await resp.text();
   parseOptSpeedCsv(text);
+}
+
+async function loadRdbCsv() {
+  const url = chrome.runtime.getURL('RDB.csv');
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Не удалось загрузить RDB.csv');
+  const text = await resp.text();
+  parseRdbCsv(text);
 }
 
 /* ================== PARSERS ================== */
@@ -638,5 +728,29 @@ function parseOptSpeedCsv(t) {
 
     if (!optSpeedMap.has(key)) optSpeedMap.set(key, []);
     optSpeedMap.get(key).push(row);
+  }
+}
+
+function parseRdbCsv(t) {
+  const lines = t.split(/\r?\n/).filter(Boolean);
+  if (!lines.length) return;
+  const delim = detectDelimiter(lines[0]);
+
+  for (let i = 1; i < lines.length; i++) {
+    const c = splitCsvLine(lines[i], delim);
+    if (c.length < 18) continue;
+
+    const code = removeBomAndTrim(c[0]).toUpperCase(); // A = BS_NAME
+    if (!code) continue;
+
+    const row = {
+      N: removeBomAndTrim(c[13]), // N - Адрес
+      O: removeBomAndTrim(c[14]), // O
+      P: removeBomAndTrim(c[15]), // P
+      R: removeBomAndTrim(c[17])  // R - Vendor
+    };
+
+    if (!rdbMap.has(code)) rdbMap.set(code, []);
+    rdbMap.get(code).push(row);
   }
 }
