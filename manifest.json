@@ -1,25 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Config_BS",
-  "version": "1.0.0",
-
+  "name": "IP Finder by Code",
+  "version": "1.0",
+  "description": "По коду XXYYYY находит IP в таблице и открывает его в текущей вкладке.",
   "action": {
     "default_popup": "popup.html",
-    "default_icon": {
-      "16": "logo.png",
-      "32": "logo.png",
-      "48": "logo.png",
-      "128": "logo.png"
-    }
+    "default_title": "Найти IP по коду"
   },
-
-  "icons": {
-    "16": "logo.png",
-    "32": "logo.png",
-    "48": "logo.png",
-    "128": "logo.png"
-  },
-
-  "permissions": ["tabs"],
-  "host_permissions": ["http://*/", "https://*/"]
+  "permissions": [
+    "tabs"
+  ]
 }
